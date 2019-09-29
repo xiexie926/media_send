@@ -384,53 +384,28 @@ int pack_ps_stream(char *pData, int nFrameLen, packet_info *pPacker, int stream_
             remain_len = 0;
         }
         //printf("[%s:%d]2#remain_len:%d nsize:%d buf_pos:%d nSizePos:%d\n",__FUNCTION__,__LINE__,remain_len, nsize, buf_pos, nSizePos);
-        if (first_div_pack == 1)
+        pBuff = (char *)calloc(1, PES_HDR_LEN + nsize + nSizePos);
+        if(pBuff == NULL)
         {
-            pBuff = (char *)calloc(1, PES_HDR_LEN + nsize + nSizePos);
-            if(pBuff == NULL)
-            {
-                printf("[%s:%d]calloc fail\n", __FUNCTION__, __LINE__);
-                return -1;
-            }
-            memcpy(pBuff, head_buf, nSizePos);
-            memcpy(pBuff+nSizePos+PES_HDR_LEN, pData + buf_pos, nsize);
-            buf_pos += nsize;
-            //first_div_pack = 0;
-            int pts = pPacker->s64CurPts;
-            pack_pes_header(pBuff+nSizePos, stream_type ? 0xC0:0xE0, nsize, pts, pts-3000);
-#if TEST_FILE
-            if (NULL != fp)
-            {
-                //printf("write %d bytes \n", (PES_HDR_LEN + nFrameLen));
-                fwrite(pBuff, 1, PES_HDR_LEN + nsize + nSizePos, fp);
-            }
-#endif
-            send_rtp_pack(pBuff, nsize + PES_HDR_LEN + nSizePos, pPacker, &head);
-            free(pBuff);
-            pBuff=NULL;
+            printf("[%s:%d]calloc fail\n", __FUNCTION__, __LINE__);
+            return -1;
         }
-        else
+        memcpy(pBuff, head_buf, nSizePos);
+        memcpy(pBuff+nSizePos+PES_HDR_LEN, pData + buf_pos, nsize);
+        buf_pos += nsize;
+        //first_div_pack = 0;
+        int pts = pPacker->s64CurPts;
+        pack_pes_header(pBuff+nSizePos, stream_type ? 0xC0:0xE0, nsize, pts, pts-3000);
+#if TEST_FILE
+        if (NULL != fp)
         {
-            pBuff = (char *)calloc(1, PES_HDR_LEN -10 + nsize);
-            if(pBuff == NULL)
-            {
-                printf("[%s:%d]calloc fail\n", __FUNCTION__, __LINE__);
-                return -1;
-            }
-            memcpy(pBuff+PES_HDR_LEN -10 , pData + buf_pos, nsize);
-            buf_pos += nsize;
-            pack_pes_header(pBuff, stream_type ? 0xC0:0xE0, nsize, 0, 0);
-#if TEST_FILE
-            if (NULL != fp)
-            {
-                //printf("write %d bytes \n", (PES_HDR_LEN + nFrameLen));
-                fwrite(pBuff, 1, PES_HDR_LEN-10 + nsize, fp);
-            }
-#endif
-            send_rtp_pack(pBuff, nsize + PES_HDR_LEN-10, pPacker, &head);
-            free(pBuff);
-            pBuff=NULL;
+            //printf("write %d bytes \n", (PES_HDR_LEN + nFrameLen));
+            fwrite(pBuff, 1, PES_HDR_LEN + nsize + nSizePos, fp);
         }
+#endif
+        send_rtp_pack(pBuff, nsize + PES_HDR_LEN + nSizePos, pPacker, &head);
+        free(pBuff);
+        pBuff=NULL;
     }
 
     return 0;
