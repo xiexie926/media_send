@@ -8,6 +8,7 @@ static int pack_pes_header(char *pData, int stream_id, unsigned int payload_len,
 static int pack_psm_header(char *pData);
 static int pack_sys_header(char *pData);
 static int pack_ps_header(char *pData, unsigned long long s64Scr);
+static int send_rtp_pack(char *pdata, int nDataLen, packet_info *pPacker, rtp_pack_head *phead);
 
 static inline void bits_write( bits_buffer_t *p_buffer, int i_count, uint64_t i_bits)
 {
@@ -411,7 +412,123 @@ int pack_ps_stream(char *pData, int nFrameLen, packet_info *pPacker, int stream_
     return 0;
 }  
 
-int send_rtp_pack(char *pdata, int nDataLen, packet_info *pPacker, rtp_pack_head *phead)
+int pack_h264_stream(char *pdata, int nDataLen, packet_info *pPacker, rtp_pack_head *phead)
+{
+    static unsigned short sernum = 397;
+    phead->sernum= sernum;
+    rtp_head  *pRtpHead = NULL;
+    int remain_len = nDataLen;
+    int data_pos = 0;
+    int data_len = 0;
+    int start_bit = 0;
+    int end_bit = 0;
+    int nalu_type = 0;
+    int first_pack = 1;
+    int is_fua_packet = 0;
+    nalu_type = pdata[0] & 0x1f;
+    char *rtp_buff = NULL;
+    int rtp_buff_len = 0;
+    unsigned char fu_identifer = 0;
+    unsigned char fu_header = 0;
+    //printf("nalu_type:%d\n", nalu_type);
+    while(remain_len > 0)
+    {
+        //printf("1#data_len:%d remain_len:%d\n", data_len, remain_len);
+        if(remain_len > MAX_PACK_LEN - RTP_HEAD_LEN - 2)
+        {
+            is_fua_packet = 1;
+            rtp_buff_len = MAX_PACK_LEN;
+            data_len = rtp_buff_len - RTP_HEAD_LEN - 2;
+            remain_len -= rtp_buff_len - RTP_HEAD_LEN - 2;
+            rtp_buff = (char *)calloc(1,rtp_buff_len);
+            if(rtp_buff == NULL)
+            {
+                printf("[%s:%d]calloc fail\n", __FUNCTION__, __LINE__);
+                return -1;
+            }
+            pRtpHead = (rtp_head *)rtp_buff;
+            pRtpHead->u1Marker    = 0;
+            if(first_pack)
+            {
+                start_bit = 1;
+                first_pack = 0;
+                data_pos++;
+            }
+            else
+            {
+                start_bit = 0;
+            }
+
+        }
+        else
+        {
+            data_len = remain_len;
+            if (is_fua_packet)
+            {
+                rtp_buff_len = data_len + RTP_HEAD_LEN + 2;
+            }
+            else
+            {
+                rtp_buff_len = data_len + RTP_HEAD_LEN;
+            }
+            remain_len -= data_len;
+            rtp_buff = (char *)calloc(1,rtp_buff_len);
+            if(rtp_buff == NULL)
+            {
+                printf("[%s:%d]calloc fail\n", __FUNCTION__, __LINE__);
+                return -1;
+            }
+            pRtpHead = (rtp_head *)rtp_buff;
+            if((NAL_TYPE_SPS == nalu_type) || (NAL_TYPE_PPS == nalu_type))
+            {
+                pRtpHead->u1Marker    = 0;
+            }
+            else
+            {
+                pRtpHead->u1Marker    = 1;
+            }
+            end_bit = 1;
+        }
+        //printf("2#data_len:%d remain_len:%d data_pos:%d rtp_buff_len:%d\n", data_len, remain_len, data_pos, rtp_buff_len);
+
+        pRtpHead->u7Payload   = phead->payload;
+        pRtpHead->u2Version   = 2;
+        pRtpHead->u32SSrc     = phead->ssrc;
+        pRtpHead->u16SeqNum   = htons(phead->sernum);
+        pRtpHead->u32TimeStamp = htonl(phead->timtamp);
+
+        if(is_fua_packet)
+        {
+            fu_identifer = (0<<7)|(3<<5)|(RTP_FU_A_TYPE&0x1f);
+            //printf("fu_identifer:%02x\n", fu_identifer);
+            fu_header = (start_bit<<7)|(end_bit<<6)|(nalu_type&0x1f);
+            rtp_buff[12] = fu_identifer;
+            rtp_buff[13] = fu_header;
+            memcpy(rtp_buff + RTP_HEAD_LEN + 2, pdata + data_pos, data_len);
+            data_pos += data_len;
+        }
+        else
+        {
+            memcpy(rtp_buff + RTP_HEAD_LEN, pdata + data_pos, data_len);
+            data_pos += data_len;
+        }
+        udp_sock_send(pPacker->sock_fd, pPacker->recv_ip, pPacker->recv_port, rtp_buff,rtp_buff_len);
+        static int count = 0;
+        if(count++%200 == 0)
+        {
+            printf("udp send to %s:%d %d bytes \n", pPacker->recv_ip, pPacker->recv_port,rtp_buff_len);
+        }
+        free(rtp_buff);
+        rtp_buff=NULL;
+        sernum++;
+        phead->sernum= sernum;
+        //udp 发送过快会丢包
+        usleep(10);
+    }
+    return 0;
+}  
+
+static int send_rtp_pack(char *pdata, int nDataLen, packet_info *pPacker, rtp_pack_head *phead)
 {
     static unsigned short sernum = 0;
     phead->sernum= sernum;

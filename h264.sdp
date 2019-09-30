@@ -1,0 +1,14 @@
+v=0 
+o=- 20140233 20140238 IN IP4 10.101.70.32
+s=rtp H264 stream 
+i=N/A 
+c=IN IP4 172.24.11.154
+t=0 0 
+a=tool:ACME RTSP server	
+a=recvonly
+a=type:broadcast
+a=charset:UTF-8
+a=framerate:30
+m=video 9878 RTP/AVP 96
+b=RR:0
+a=rtpmap:96 H264/90000

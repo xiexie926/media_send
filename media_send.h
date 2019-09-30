@@ -43,6 +43,9 @@
 #define NAL_TYPE_PPS         8
 #define NAL_TYPE_DELIMITER   9
 
+#define RTP_STAP_A_TYPE      24
+#define RTP_FU_A_TYPE        28
+
 #define PROFILE_H264_BASELINE             66
 #define PROFILE_H264_MAIN                 77
 #define PROFILE_H264_EXTENDED             88
@@ -273,6 +276,8 @@ int sock_udp_open(int sock_type);
 void sock_udp_close(int sock_fd);
 int udp_sock_send(int sock_fd, char * ip, int port, char * buffer, int len);
 int pack_ps_stream(char *pData, int nFrameLen, packet_info* pPacker, int stream_type);
+int pack_h264_stream(char *pdata, int nDataLen, packet_info *pPacker, rtp_pack_head *phead);
+
 int get_h264_frame(unsigned char *buf, frame_info *pframe);
 int parse_h264_sps(unsigned char *buf, int len, sps_t *p_sps);
 int parse_h264_pps(unsigned char *buf, int len, pps_t *p_pps);
