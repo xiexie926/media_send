@@ -27,11 +27,11 @@
 #define UDP_BASE_PORT   (60000+66)
 #define H264_PAYLOAD    (96)
 //封装PS流
-#define PS_HDR_LEN  14  
-#define SYS_HDR_LEN 15  
-#define PSM_HDR_LEN 20  
-#define PES_HDR_LEN 19  
-#define RTP_HDR_LEN 12  
+#define PS_HDR_LEN  14
+#define SYS_HDR_LEN 15
+#define PSM_HDR_LEN 20
+#define PES_HDR_LEN 19
+#define RTP_HDR_LEN 12
 #define PS_PES_PAYLOAD_SIZE 1024
 #define MAX_PES_DATA_LEN 65500
 
@@ -138,7 +138,7 @@ enum h264_nal_unit_type_e
     H264_NAL_SEI         = 6,    /* ref_idc == 0 */
     H264_NAL_SPS         = 7,
     H264_NAL_PPS         = 8,
-    H264_NAL_AU_DELIMITER= 9,
+    H264_NAL_AU_DELIMITER = 9,
     /* ref_idc == 0 for 6,9,10,11,12 */
     H264_NAL_END_OF_SEQ  = 10,
     H264_NAL_END_OF_STREAM = 11,
@@ -151,7 +151,7 @@ enum h264_nal_unit_type_e
     H264_NAL_RESERVED_18 = 18,
     H264_NAL_SLICE_WP    = 19,
     H264_NAL_SLICE_EXT   = 20,
-    H264_NAL_SLICE_3D_EXT= 21,
+    H264_NAL_SLICE_3D_EXT = 21,
     H264_NAL_RESERVED_22 = 22,
     H264_NAL_RESERVED_23 = 23,
 };
@@ -160,13 +160,13 @@ enum h264_nal_unit_type_e
 typedef struct rtp_head_s
 {
     /**//* byte 0 */
-    unsigned char u4CSrcLen:4;      /**//* expect 0 */
-    unsigned char u1Externsion:1;   /**//* expect 1, see RTP_OP below */
-    unsigned char u1Padding:1;      /**//* expect 0 */
-    unsigned char u2Version:2;      /**//* expect 2 */
+    unsigned char u4CSrcLen: 4;      /**/ /* expect 0 */
+    unsigned char u1Externsion: 1;   /**/ /* expect 1, see RTP_OP below */
+    unsigned char u1Padding: 1;      /**/ /* expect 0 */
+    unsigned char u2Version: 2;      /**/ /* expect 2 */
     /**//* byte 1 */
-    unsigned char u7Payload:7;      /**//* RTP_PAYLOAD_RTSP */
-    unsigned char u1Marker:1;       /**//* expect 1 */
+    unsigned char u7Payload: 7;      /**/ /* RTP_PAYLOAD_RTSP */
+    unsigned char u1Marker: 1;       /**/ /* expect 1 */
     /**//* bytes 2, 3 */
     unsigned short u16SeqNum;
     /**//* bytes 4-7 */
@@ -238,10 +238,12 @@ typedef struct sps_s
     int32_t offset_for_ref_frame[255];
     int i_log2_max_pic_order_cnt_lsb;
 
-    struct {
+    struct
+    {
         bool b_valid;
         int i_sar_num, i_sar_den;
-        struct {
+        struct
+        {
             bool b_full_range;
             uint8_t i_colour_primaries;
             uint8_t i_transfer_characteristics;
@@ -260,7 +262,7 @@ typedef struct sps_s
         uint8_t b_bitstream_restriction_flag;
         uint8_t i_max_num_reorder_frames;
     } vui;
-}sps_t;
+} sps_t;
 
 typedef struct pps_s
 {
@@ -270,12 +272,12 @@ typedef struct pps_s
     uint8_t i_redundant_pic_present_flag;
     uint8_t weighted_pred_flag;
     uint8_t weighted_bipred_idc;
-}pps_t;
+} pps_t;
 
 int sock_udp_open(int sock_type);
 void sock_udp_close(int sock_fd);
-int udp_sock_send(int sock_fd, char * ip, int port, char * buffer, int len);
-int pack_ps_stream(char *pData, int nFrameLen, packet_info* pPacker, int stream_type);
+int udp_sock_send(int sock_fd, char *ip, int port, char *buffer, int len);
+int pack_ps_stream(char *pData, int nFrameLen, packet_info *pPacker, int stream_type);
 int pack_h264_stream(char *pdata, int nDataLen, packet_info *pPacker, rtp_pack_head *phead);
 
 int get_h264_frame(unsigned char *buf, frame_info *pframe);

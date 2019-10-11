@@ -1,3 +1,4 @@
+#include <sys/types.h>
 #include "media_send.h"
 
 #define TEST_FILE 0
@@ -15,7 +16,7 @@ static inline void bits_write( bits_buffer_t *p_buffer, int i_count, uint64_t i_
     while( i_count > 0 )
     {
         i_count--;
-        if( ( i_bits >> i_count )&0x01 )
+        if( ( i_bits >> i_count ) & 0x01 )
         {
             p_buffer->p_data[p_buffer->i_data] |= p_buffer->i_mask;
         }
@@ -52,7 +53,7 @@ void sock_udp_close(int sock_fd)
     }
 }
 
-int udp_sock_send(int sock_fd, char * ip, int port, char * buffer, int len)
+int udp_sock_send(int sock_fd, char *ip, int port, char *buffer, int len)
 {
     if ((NULL == ip) || (NULL == buffer) || (len <= 0))
     {
@@ -65,7 +66,7 @@ int udp_sock_send(int sock_fd, char * ip, int port, char * buffer, int len)
     addr.sin_addr.s_addr   = inet_addr(ip);
     memset(&addr.sin_zero, 0, 8);
 
-    int ret = sendto(sock_fd, buffer, len, 0, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+    int ret = sendto(sock_fd, buffer, len, 0, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
     if (ret < 0)
     {
         if ((errno == EWOULDBLOCK) || (errno == EINTR))
@@ -83,9 +84,9 @@ int udp_sock_send(int sock_fd, char * ip, int port, char * buffer, int len)
 
 int check_start_code(unsigned char *p)
 {
-    if((*(p+0)==0x00)&&(*(p+1)==0x00)&&(*(p+2)==0x00)&&(*(p+3)==0x01))
+    if((*(p + 0) == 0x00) && (*(p + 1) == 0x00) && (*(p + 2) == 0x00) && (*(p + 3) == 0x01))
         return 4;
-    else if((*(p+0)==0x00)&&(*(p+1)==0x00)&&(*(p+2)==0x01))
+    else if((*(p + 0) == 0x00) && (*(p + 1) == 0x00) && (*(p + 2) == 0x01))
         return 3;
     else
         return 0;
@@ -98,12 +99,12 @@ int get_h264_frame(unsigned char *buf, frame_info *pframe)
         printf("[%s:%d]invalid param\n", __FUNCTION__, __LINE__);
         return -1;
     }
-    unsigned int len=0;
+    unsigned int len = 0;
     int nal_type = 0;
     unsigned char *databuf = NULL;
-    char *start_pos = NULL;
-    char *end_pos = NULL;
-    char *p = buf;
+    unsigned char *start_pos = NULL;
+    unsigned char *end_pos = NULL;
+    unsigned char *p = buf;
     int start_code_len = 0;
     while (p)
     {
@@ -151,12 +152,12 @@ int get_h264_frame(unsigned char *buf, frame_info *pframe)
     len = end_pos - start_pos;
     nal_type = H264_GET_NALTYPE(*(start_pos + start_code_len));
     pframe->type = nal_type;
-    pframe->len=len;
+    pframe->len = len;
     pframe->start_code_len = start_code_len;
     return 0;
 }
 
-static int pack_pes_header(char *pData, int stream_id, unsigned int payload_len, unsigned long long pts, unsigned long long dts)  
+static int pack_pes_header(char *pData, int stream_id, unsigned int payload_len, unsigned long long pts, unsigned long long dts)
 {
     bits_buffer_t bitsBuffer;
     bitsBuffer.i_size = PES_HDR_LEN;
@@ -171,65 +172,65 @@ static int pack_pes_header(char *pData, int stream_id, unsigned int payload_len,
     {
         memset(bitsBuffer.p_data, 0, PES_HDR_LEN);
     }
-    /*system header*/  
-    bits_write(&bitsBuffer, 24,0x000001);  /*start code*/  
-    bits_write(&bitsBuffer, 8, stream_id);   /*streamID*/  
+    /*system header*/
+    bits_write(&bitsBuffer, 24, 0x000001); /*start code*/
+    bits_write(&bitsBuffer, 8, stream_id);   /*streamID*/
     //payload_len不能大于65535
     if (pts == 0)
     {
-        bits_write(&bitsBuffer, 16,payload_len+3);  /*packet_len*/ //指出pes分组中数据长度和该字节后的长度和  
+        bits_write(&bitsBuffer, 16, payload_len + 3);  /*packet_len*/ //指出pes分组中数据长度和该字节后的长度和
     }
     else
     {
-        bits_write(&bitsBuffer, 16,payload_len+13);  /*packet_len*/ //指出pes分组中数据长度和该字节后的长度和  
+        bits_write(&bitsBuffer, 16, payload_len + 13);  /*packet_len*/ //指出pes分组中数据长度和该字节后的长度和
     }
-    bits_write(&bitsBuffer, 2, 2);        /*'10'*/  
-    bits_write(&bitsBuffer, 2, 0);        /*scrambling_control*/  
-    bits_write(&bitsBuffer, 1, 0);        /*priority*/  
-    bits_write(&bitsBuffer, 1, 0);        /*data_alignment_indicator*/  
-    bits_write(&bitsBuffer, 1, 0);        /*copyright*/  
+    bits_write(&bitsBuffer, 2, 2);        /*'10'*/
+    bits_write(&bitsBuffer, 2, 0);        /*scrambling_control*/
+    bits_write(&bitsBuffer, 1, 0);        /*priority*/
+    bits_write(&bitsBuffer, 1, 0);        /*data_alignment_indicator*/
+    bits_write(&bitsBuffer, 1, 0);        /*copyright*/
     bits_write(&bitsBuffer, 1, 0);        /*original_or_copy*/
     if (pts == 0)
     {
-        bits_write(&bitsBuffer, 1, 0);        /*PTS_flag*/  
-        bits_write(&bitsBuffer, 1, 0);        /*DTS_flag*/  
+        bits_write(&bitsBuffer, 1, 0);        /*PTS_flag*/
+        bits_write(&bitsBuffer, 1, 0);        /*DTS_flag*/
     }
     else
     {
-        bits_write(&bitsBuffer, 1, 1);        /*PTS_flag*/  
-        bits_write(&bitsBuffer, 1, 1);        /*DTS_flag*/  
+        bits_write(&bitsBuffer, 1, 1);        /*PTS_flag*/
+        bits_write(&bitsBuffer, 1, 1);        /*DTS_flag*/
     }
-    bits_write(&bitsBuffer, 1, 0);        /*ESCR_flag*/  
-    bits_write(&bitsBuffer, 1, 0);        /*ES_rate_flag*/  
-    bits_write(&bitsBuffer, 1, 0);        /*DSM_trick_mode_flag*/  
-    bits_write(&bitsBuffer, 1, 0);        /*additional_copy_info_flag*/  
-    bits_write(&bitsBuffer, 1, 0);        /*PES_CRC_flag*/  
+    bits_write(&bitsBuffer, 1, 0);        /*ESCR_flag*/
+    bits_write(&bitsBuffer, 1, 0);        /*ES_rate_flag*/
+    bits_write(&bitsBuffer, 1, 0);        /*DSM_trick_mode_flag*/
+    bits_write(&bitsBuffer, 1, 0);        /*additional_copy_info_flag*/
+    bits_write(&bitsBuffer, 1, 0);        /*PES_CRC_flag*/
     bits_write(&bitsBuffer, 1, 0);        /*PES_extension_flag*/  //30
     if (pts == 0)
     {
-        bits_write(&bitsBuffer, 8, 0);        /*header_data_length*/   
+        bits_write(&bitsBuffer, 8, 0);        /*header_data_length*/
     }
     else
     {
-        bits_write(&bitsBuffer, 8, 10);        /*header_data_length*/   
+        bits_write(&bitsBuffer, 8, 10);        /*header_data_length*/
         // 指出包含在 PES 分组标题中的可选字段和任何填充字节所占用的总字节数。该字段之前的字节指出了有无可选字段。
-        bits_write(&bitsBuffer, 4, 3);                    /*'0011'*/  
-        bits_write(&bitsBuffer, 3, ((pts)>>30)&0x07 );     /*PTS[32..30]*/  
-        bits_write(&bitsBuffer, 1, 1);  
-        bits_write(&bitsBuffer, 15,((pts)>>15)&0x7FFF);    /*PTS[29..15]*/  
-        bits_write(&bitsBuffer, 1, 1);  
-        bits_write(&bitsBuffer, 15,(pts)&0x7FFF);          /*PTS[14..0]*/  
-        bits_write(&bitsBuffer, 1, 1);  
-        bits_write(&bitsBuffer, 4, 1);                    /*'0001'*/  
-        bits_write(&bitsBuffer, 3, ((dts)>>30)&0x07 );     /*DTS[32..30]*/  
-        bits_write(&bitsBuffer, 1, 1);  
-        bits_write(&bitsBuffer, 15,((dts)>>15)&0x7FFF);    /*DTS[29..15]*/  
-        bits_write(&bitsBuffer, 1, 1);  
-        bits_write(&bitsBuffer, 15,(dts)&0x7FFF);          /*DTS[14..0]*/  
-        bits_write(&bitsBuffer, 1, 1);  
+        bits_write(&bitsBuffer, 4, 3);                    /*'0011'*/
+        bits_write(&bitsBuffer, 3, ((pts) >> 30) & 0x07 ); /*PTS[32..30]*/
+        bits_write(&bitsBuffer, 1, 1);
+        bits_write(&bitsBuffer, 15, ((pts) >> 15) & 0x7FFF); /*PTS[29..15]*/
+        bits_write(&bitsBuffer, 1, 1);
+        bits_write(&bitsBuffer, 15, (pts) & 0x7FFF);       /*PTS[14..0]*/
+        bits_write(&bitsBuffer, 1, 1);
+        bits_write(&bitsBuffer, 4, 1);                    /*'0001'*/
+        bits_write(&bitsBuffer, 3, ((dts) >> 30) & 0x07 ); /*DTS[32..30]*/
+        bits_write(&bitsBuffer, 1, 1);
+        bits_write(&bitsBuffer, 15, ((dts) >> 15) & 0x7FFF); /*DTS[29..15]*/
+        bits_write(&bitsBuffer, 1, 1);
+        bits_write(&bitsBuffer, 15, (dts) & 0x7FFF);       /*DTS[14..0]*/
+        bits_write(&bitsBuffer, 1, 1);
     }
-    return 0;  
-}  
+    return 0;
+}
 
 static int pack_psm_header(char *pData)
 {
@@ -239,35 +240,35 @@ static int pack_psm_header(char *pData)
     bitsBuffer.i_mask = 0x80;
     bitsBuffer.p_data = (unsigned char *)(pData);
     memset(bitsBuffer.p_data, 0, PSM_HDR_LEN);
-    bits_write(&bitsBuffer, 24,0x000001);   /*start code*/
+    bits_write(&bitsBuffer, 24, 0x000001);  /*start code*/
     bits_write(&bitsBuffer, 8, 0xBC);       /*map stream id*/
-    bits_write(&bitsBuffer, 16,14);         /*program stream map length*/
+    bits_write(&bitsBuffer, 16, 14);        /*program stream map length*/
     bits_write(&bitsBuffer, 1, 1);          /*current next indicator */
-    bits_write(&bitsBuffer, 2, 3);          /*reserved*/  
+    bits_write(&bitsBuffer, 2, 3);          /*reserved*/
     bits_write(&bitsBuffer, 5, 1);          /*program stream map version*/
-    bits_write(&bitsBuffer, 7, 0x7F);       /*reserved */  
-    bits_write(&bitsBuffer, 1, 1);          /*marker bit */  
-    bits_write(&bitsBuffer, 16,0);          /*programe stream info length*/
+    bits_write(&bitsBuffer, 7, 0x7F);       /*reserved */
+    bits_write(&bitsBuffer, 1, 1);          /*marker bit */
+    bits_write(&bitsBuffer, 16, 0);         /*programe stream info length*/
     bits_write(&bitsBuffer, 16, 4);         /*elementary stream map length  is*/
 #if 0
-    /*audio*/  
+    /*audio*/
     bits_write(&bitsBuffer, 8, 0x90);       /*stream_type*/
     bits_write(&bitsBuffer, 8, 0xC0);       /*elementary_stream_id*/
     bits_write(&bitsBuffer, 16, 0);         /*elementary_stream_info_length is*/
 #endif
-    /*video*/  
-    bits_write(&bitsBuffer, 8, 0x1B);       /*stream_type*/  
+    /*video*/
+    bits_write(&bitsBuffer, 8, 0x1B);       /*stream_type*/
     bits_write(&bitsBuffer, 8, 0xE0);       /*elementary_stream_id*/
     bits_write(&bitsBuffer, 8, 0x00);       /*elementary_stream_id*/
     bits_write(&bitsBuffer, 8, 0x00);       /*elementary_stream_id*/
-    /*crc (53 12 F5 5C)*/  
-    bits_write(&bitsBuffer, 8, 0x53);       /*crc (24~31) bits*/  
-    bits_write(&bitsBuffer, 8, 0x12);       /*crc (16~23) bits*/  
-    bits_write(&bitsBuffer, 8, 0xF5);       /*crc (8~15) bits*/  
-    bits_write(&bitsBuffer, 8, 0x5C);       /*crc (0~7) bits*/  
+    /*crc (53 12 F5 5C)*/
+    bits_write(&bitsBuffer, 8, 0x53);       /*crc (24~31) bits*/
+    bits_write(&bitsBuffer, 8, 0x12);       /*crc (16~23) bits*/
+    bits_write(&bitsBuffer, 8, 0xF5);       /*crc (8~15) bits*/
+    bits_write(&bitsBuffer, 8, 0x5C);       /*crc (0~7) bits*/
 
-    return 0;  
-}  
+    return 0;
+}
 
 static int pack_sys_header(char *pData)
 {
@@ -277,63 +278,63 @@ static int pack_sys_header(char *pData)
     bitsBuffer.i_mask = 0x80;
     bitsBuffer.p_data = (unsigned char *)(pData);
     memset(bitsBuffer.p_data, 0, SYS_HDR_LEN);
-    /*system header*/  
-    bits_write(&bitsBuffer, 32, 0x000001BB);   /*start code*/  
-    bits_write(&bitsBuffer, 16, 12 - 6 +3*1);/*header_length 表示次字节后面的长度，后面的相关头也是次意思*/  
-    bits_write(&bitsBuffer, 1, 1);            /*marker_bit*/  
-    bits_write(&bitsBuffer, 22, 0);        /*rate_bound*/  
-    bits_write(&bitsBuffer, 1, 1);            /*marker_bit*/  
-    bits_write(&bitsBuffer, 6, 0);            /*audio_bound*/  
-    bits_write(&bitsBuffer, 1, 0);            /*fixed_flag */  
-    bits_write(&bitsBuffer, 1, 0);            /*CSPS_flag */  
-    bits_write(&bitsBuffer, 1, 0);            /*system_audio_lock_flag*/  
-    bits_write(&bitsBuffer, 1, 0);            /*system_video_lock_flag*/  
-    bits_write(&bitsBuffer, 1, 1);            /*marker_bit*/  
-    bits_write(&bitsBuffer, 5, 1);            /*video_bound*/  
-    bits_write(&bitsBuffer, 1, 1);            /*dif from mpeg1*/  
-    bits_write(&bitsBuffer, 7, 0x7F);         /*reserver*/  
-    /*audio stream bound*/  
+    /*system header*/
+    bits_write(&bitsBuffer, 32, 0x000001BB);   /*start code*/
+    bits_write(&bitsBuffer, 16, 12 - 6 + 3 * 1); /*header_length 表示次字节后面的长度，后面的相关头也是次意思*/
+    bits_write(&bitsBuffer, 1, 1);            /*marker_bit*/
+    bits_write(&bitsBuffer, 22, 0);        /*rate_bound*/
+    bits_write(&bitsBuffer, 1, 1);            /*marker_bit*/
+    bits_write(&bitsBuffer, 6, 0);            /*audio_bound*/
+    bits_write(&bitsBuffer, 1, 0);            /*fixed_flag */
+    bits_write(&bitsBuffer, 1, 0);            /*CSPS_flag */
+    bits_write(&bitsBuffer, 1, 0);            /*system_audio_lock_flag*/
+    bits_write(&bitsBuffer, 1, 0);            /*system_video_lock_flag*/
+    bits_write(&bitsBuffer, 1, 1);            /*marker_bit*/
+    bits_write(&bitsBuffer, 5, 1);            /*video_bound*/
+    bits_write(&bitsBuffer, 1, 1);            /*dif from mpeg1*/
+    bits_write(&bitsBuffer, 7, 0x7F);         /*reserver*/
+    /*audio stream bound*/
 #if 0
-    bits_write( &bitsBuffer, 8,  0xC0);         /*stream_id*/  
-    bits_write( &bitsBuffer, 2,  3);            /*marker_bit */  
-    bits_write( &bitsBuffer, 1,  0);            /*PSTD_buffer_bound_scale*/  
-    bits_write( &bitsBuffer, 13, 512);          /*PSTD_buffer_size_bound*/  
+    bits_write( &bitsBuffer, 8,  0xC0);         /*stream_id*/
+    bits_write( &bitsBuffer, 2,  3);            /*marker_bit */
+    bits_write( &bitsBuffer, 1,  0);            /*PSTD_buffer_bound_scale*/
+    bits_write( &bitsBuffer, 13, 512);          /*PSTD_buffer_size_bound*/
 #endif
-    /*video stream bound*/  
-    bits_write(&bitsBuffer, 8, 0xE0);         /*stream_id*/  
-    bits_write(&bitsBuffer, 2, 3);            /*marker_bit */  
-    bits_write(&bitsBuffer, 1, 1);            /*PSTD_buffer_bound_scale*/  
-    bits_write(&bitsBuffer, 13, 400);         /*PSTD_buffer_size_bound*/  
-    return 0;  
+    /*video stream bound*/
+    bits_write(&bitsBuffer, 8, 0xE0);         /*stream_id*/
+    bits_write(&bitsBuffer, 2, 3);            /*marker_bit */
+    bits_write(&bitsBuffer, 1, 1);            /*PSTD_buffer_bound_scale*/
+    bits_write(&bitsBuffer, 13, 400);         /*PSTD_buffer_size_bound*/
+    return 0;
 }
 
 static int pack_ps_header(char *pData, unsigned long long s64Scr)
-{  
+{
     unsigned long long lScrExt = 0;
     bits_buffer_t bitsBuffer;
     bitsBuffer.i_size = PS_HDR_LEN;
     bitsBuffer.i_data = 0;
-    bitsBuffer.i_mask = 0x80; // 二进制：10000000 这里是为了后面对一个字节的每一位进行操作，避免大小端夸字节字序错乱  
+    bitsBuffer.i_mask = 0x80; // 二进制：10000000 这里是为了后面对一个字节的每一位进行操作，避免大小端夸字节字序错乱
     bitsBuffer.p_data = (unsigned char *)pData;
     memset(bitsBuffer.p_data, 0, PS_HDR_LEN);
-    bits_write(&bitsBuffer, 32, 0x000001BA);            /*start codes*/  
-    bits_write(&bitsBuffer, 2,  1);                     /*marker bits '01b'*/  
-    bits_write(&bitsBuffer, 3,  (s64Scr>>30)&0x07);     /*System clock [32..30]*/  
-    bits_write(&bitsBuffer, 1,  1);                     /*marker bit*/  
-    bits_write(&bitsBuffer, 15, (s64Scr>>15)&0x7FFF);   /*System clock [29..15]*/  
-    bits_write(&bitsBuffer, 1,  1);                     /*marker bit*/  
-    bits_write(&bitsBuffer, 15, s64Scr&0x7fff);         /*System clock [14..0]*/  
-    bits_write(&bitsBuffer, 1,  1);                     /*marker bit*/  
-    bits_write(&bitsBuffer, 9,  lScrExt&0x01ff);        /*System clock [14..0]*/  
-    bits_write(&bitsBuffer, 1,  1);                     /*marker bit*/  
-    bits_write(&bitsBuffer, 22, 25480&0x3fffff);        /*bit rate(n units of 50 bytes per second.)*/  
-    bits_write(&bitsBuffer, 2,  3);                     /*marker bits '11'*/  
-    bits_write(&bitsBuffer, 5,  0x1f);                  /*reserved(reserved for future use)*/  
-    bits_write(&bitsBuffer, 3,  0);                     /*stuffing length*/  
+    bits_write(&bitsBuffer, 32, 0x000001BA);            /*start codes*/
+    bits_write(&bitsBuffer, 2,  1);                     /*marker bits '01b'*/
+    bits_write(&bitsBuffer, 3,  (s64Scr >> 30) & 0x07); /*System clock [32..30]*/
+    bits_write(&bitsBuffer, 1,  1);                     /*marker bit*/
+    bits_write(&bitsBuffer, 15, (s64Scr >> 15) & 0x7FFF); /*System clock [29..15]*/
+    bits_write(&bitsBuffer, 1,  1);                     /*marker bit*/
+    bits_write(&bitsBuffer, 15, s64Scr & 0x7fff);       /*System clock [14..0]*/
+    bits_write(&bitsBuffer, 1,  1);                     /*marker bit*/
+    bits_write(&bitsBuffer, 9,  lScrExt & 0x01ff);      /*System clock [14..0]*/
+    bits_write(&bitsBuffer, 1,  1);                     /*marker bit*/
+    bits_write(&bitsBuffer, 22, 25480 & 0x3fffff);      /*bit rate(n units of 50 bytes per second.)*/
+    bits_write(&bitsBuffer, 2,  3);                     /*marker bits '11'*/
+    bits_write(&bitsBuffer, 5,  0x1f);                  /*reserved(reserved for future use)*/
+    bits_write(&bitsBuffer, 3,  0);                     /*stuffing length*/
     return 0;
-}  
+}
 
-int pack_ps_stream(char *pData, int nFrameLen, packet_info *pPacker, int stream_type)  
+int pack_ps_stream(char *pData, int nFrameLen, packet_info *pPacker, int stream_type)
 {
     if ((NULL == pData) || (NULL == pPacker) || (0 == nFrameLen))
     {
@@ -351,12 +352,12 @@ int pack_ps_stream(char *pData, int nFrameLen, packet_info *pPacker, int stream_
         nSizePos += SYS_HDR_LEN;
     }
     pack_psm_header(head_buf + nSizePos);
-    nSizePos += PSM_HDR_LEN; 
+    nSizePos += PSM_HDR_LEN;
 #if TEST_FILE
-    static FILE * fp = NULL;
+    static FILE *fp = NULL;
     if (NULL == fp)
     {
-      fp = fopen("test.ps", "wb");
+        fp = fopen("test.ps", "wb");
     }
     if (NULL != fp)
     {
@@ -392,11 +393,11 @@ int pack_ps_stream(char *pData, int nFrameLen, packet_info *pPacker, int stream_
             return -1;
         }
         memcpy(pBuff, head_buf, nSizePos);
-        memcpy(pBuff+nSizePos+PES_HDR_LEN, pData + buf_pos, nsize);
+        memcpy(pBuff + nSizePos + PES_HDR_LEN, pData + buf_pos, nsize);
         buf_pos += nsize;
         //first_div_pack = 0;
         int pts = pPacker->s64CurPts;
-        pack_pes_header(pBuff+nSizePos, stream_type ? 0xC0:0xE0, nsize, pts, pts-3000);
+        pack_pes_header(pBuff + nSizePos, stream_type ? 0xC0 : 0xE0, nsize, pts, pts - 3000);
 #if TEST_FILE
         if (NULL != fp)
         {
@@ -406,16 +407,16 @@ int pack_ps_stream(char *pData, int nFrameLen, packet_info *pPacker, int stream_
 #endif
         send_rtp_pack(pBuff, nsize + PES_HDR_LEN + nSizePos, pPacker, &head);
         free(pBuff);
-        pBuff=NULL;
+        pBuff = NULL;
     }
 
     return 0;
-}  
+}
 
 int pack_h264_stream(char *pdata, int nDataLen, packet_info *pPacker, rtp_pack_head *phead)
 {
     static unsigned short sernum = 397;
-    phead->sernum= sernum;
+    phead->sernum = sernum;
     rtp_head  *pRtpHead = NULL;
     int remain_len = nDataLen;
     int data_pos = 0;
@@ -440,7 +441,7 @@ int pack_h264_stream(char *pdata, int nDataLen, packet_info *pPacker, rtp_pack_h
             rtp_buff_len = MAX_PACK_LEN;
             data_len = rtp_buff_len - RTP_HEAD_LEN - 2;
             remain_len -= rtp_buff_len - RTP_HEAD_LEN - 2;
-            rtp_buff = (char *)calloc(1,rtp_buff_len);
+            rtp_buff = (char *)calloc(1, rtp_buff_len);
             if(rtp_buff == NULL)
             {
                 printf("[%s:%d]calloc fail\n", __FUNCTION__, __LINE__);
@@ -472,7 +473,7 @@ int pack_h264_stream(char *pdata, int nDataLen, packet_info *pPacker, rtp_pack_h
                 rtp_buff_len = data_len + RTP_HEAD_LEN;
             }
             remain_len -= data_len;
-            rtp_buff = (char *)calloc(1,rtp_buff_len);
+            rtp_buff = (char *)calloc(1, rtp_buff_len);
             if(rtp_buff == NULL)
             {
                 printf("[%s:%d]calloc fail\n", __FUNCTION__, __LINE__);
@@ -499,9 +500,9 @@ int pack_h264_stream(char *pdata, int nDataLen, packet_info *pPacker, rtp_pack_h
 
         if(is_fua_packet)
         {
-            fu_identifer = (0<<7)|(3<<5)|(RTP_FU_A_TYPE&0x1f);
+            fu_identifer = (0 << 7) | (3 << 5) | (RTP_FU_A_TYPE & 0x1f);
             //printf("fu_identifer:%02x\n", fu_identifer);
-            fu_header = (start_bit<<7)|(end_bit<<6)|(nalu_type&0x1f);
+            fu_header = (start_bit << 7) | (end_bit << 6) | (nalu_type & 0x1f);
             rtp_buff[12] = fu_identifer;
             rtp_buff[13] = fu_header;
             memcpy(rtp_buff + RTP_HEAD_LEN + 2, pdata + data_pos, data_len);
@@ -512,26 +513,26 @@ int pack_h264_stream(char *pdata, int nDataLen, packet_info *pPacker, rtp_pack_h
             memcpy(rtp_buff + RTP_HEAD_LEN, pdata + data_pos, data_len);
             data_pos += data_len;
         }
-        udp_sock_send(pPacker->sock_fd, pPacker->recv_ip, pPacker->recv_port, rtp_buff,rtp_buff_len);
+        udp_sock_send(pPacker->sock_fd, pPacker->recv_ip, pPacker->recv_port, rtp_buff, rtp_buff_len);
         static int count = 0;
-        if(count++%200 == 0)
+        if(count++ % 200 == 0)
         {
-            printf("udp send to %s:%d %d bytes \n", pPacker->recv_ip, pPacker->recv_port,rtp_buff_len);
+            printf("udp send to %s:%d %d bytes \n", pPacker->recv_ip, pPacker->recv_port, rtp_buff_len);
         }
         free(rtp_buff);
-        rtp_buff=NULL;
+        rtp_buff = NULL;
         sernum++;
-        phead->sernum= sernum;
+        phead->sernum = sernum;
         //udp 发送过快会丢包
         usleep(10);
     }
     return 0;
-}  
+}
 
 static int send_rtp_pack(char *pdata, int nDataLen, packet_info *pPacker, rtp_pack_head *phead)
 {
     static unsigned short sernum = 0;
-    phead->sernum= sernum;
+    phead->sernum = sernum;
     rtp_head  *pRtpHead = NULL;
     int remain_len = nDataLen;
     int data_pos = 0;
@@ -546,7 +547,7 @@ static int send_rtp_pack(char *pdata, int nDataLen, packet_info *pPacker, rtp_pa
             rtp_buff_len = MAX_PACK_LEN;
             data_len = rtp_buff_len - RTP_HEAD_LEN;
             remain_len -= rtp_buff_len - RTP_HEAD_LEN;
-            rtp_buff = (char *)calloc(1,rtp_buff_len);
+            rtp_buff = (char *)calloc(1, rtp_buff_len);
             if(rtp_buff == NULL)
             {
                 printf("[%s:%d]calloc fail\n", __FUNCTION__, __LINE__);
@@ -560,7 +561,7 @@ static int send_rtp_pack(char *pdata, int nDataLen, packet_info *pPacker, rtp_pa
             data_len = remain_len;
             rtp_buff_len = data_len + RTP_HEAD_LEN;
             remain_len -= data_len;
-            rtp_buff = (char *)calloc(1,rtp_buff_len);
+            rtp_buff = (char *)calloc(1, rtp_buff_len);
             if(rtp_buff == NULL)
             {
                 printf("[%s:%d]calloc fail\n", __FUNCTION__, __LINE__);
@@ -576,35 +577,35 @@ static int send_rtp_pack(char *pdata, int nDataLen, packet_info *pPacker, rtp_pa
         pRtpHead->u32SSrc     = phead->ssrc;
         pRtpHead->u16SeqNum   = htons(phead->sernum);
         pRtpHead->u32TimeStamp = htonl(phead->timtamp);
-        
+
         memcpy(rtp_buff + RTP_HEAD_LEN, pdata + data_pos, data_len);
         data_pos += data_len;
-        udp_sock_send(pPacker->sock_fd, pPacker->recv_ip, pPacker->recv_port, rtp_buff,rtp_buff_len);
+        udp_sock_send(pPacker->sock_fd, pPacker->recv_ip, pPacker->recv_port, rtp_buff, rtp_buff_len);
         static int count = 0;
-        if(count++%200 == 0)
+        if(count++ % 200 == 0)
         {
-            printf("udp send to %s:%d %d bytes \n", pPacker->recv_ip, pPacker->recv_port,rtp_buff_len);
+            printf("udp send to %s:%d %d bytes \n", pPacker->recv_ip, pPacker->recv_port, rtp_buff_len);
         }
         free(rtp_buff);
-        rtp_buff=NULL;
+        rtp_buff = NULL;
         sernum++;
-        phead->sernum= sernum;
+        phead->sernum = sernum;
         //udp 发送过快会丢包
         usleep(10);
     }
 
     return 0;
 }
-static int nal_to_rbsp(const uint8_t* nal_buf, int* nal_size, uint8_t* rbsp_buf, int* rbsp_size)
+static int nal_to_rbsp(const uint8_t *nal_buf, int *nal_size, uint8_t *rbsp_buf, int *rbsp_size)
 {
     int i;
     int j     = 0;
     int count = 0;
-  
+
     for( i = 0; i < *nal_size; i++ )
-    { 
+    {
         // in NAL unit, 0x000000, 0x000001 or 0x000002 shall not occur at any byte-aligned position
-        if( ( count == 2 ) && ( nal_buf[i] < 0x03) ) 
+        if( ( count == 2 ) && ( nal_buf[i] < 0x03) )
         {
             return -1;
         }
@@ -612,7 +613,7 @@ static int nal_to_rbsp(const uint8_t* nal_buf, int* nal_size, uint8_t* rbsp_buf,
         if( ( count == 2 ) && ( nal_buf[i] == 0x03) )
         {
             // check the 4th byte after 0x000003, except when cabac_zero_word is used, in which case the last three bytes of this NAL unit must be 0x000003
-            if((i < *nal_size - 1) && (nal_buf[i+1] > 0x03))
+            if((i < *nal_size - 1) && (nal_buf[i + 1] > 0x03))
             {
                 return -1;
             }
@@ -627,7 +628,7 @@ static int nal_to_rbsp(const uint8_t* nal_buf, int* nal_size, uint8_t* rbsp_buf,
             count = 0;
         }
 
-        if ( j >= *rbsp_size ) 
+        if ( j >= *rbsp_size )
         {
             // error, not enough space
             return -1;
@@ -663,7 +664,7 @@ int parse_h264_sps(unsigned char *buf, int len, sps_t *p_sps)
     int buf_len = len;
     int rbsp_len = len;
     int i = 0;
-    uint8_t* rbsp_buf = (uint8_t*)calloc(1, rbsp_len);
+    uint8_t *rbsp_buf = (uint8_t *)calloc(1, rbsp_len);
 
     if (NULL == rbsp_buf)
     {
@@ -689,18 +690,18 @@ int parse_h264_sps(unsigned char *buf, int len, sps_t *p_sps)
     p_sps->i_id = i_sps_id;
 
     if( i_profile_idc == PROFILE_H264_HIGH ||
-        i_profile_idc == PROFILE_H264_HIGH_10 ||
-        i_profile_idc == PROFILE_H264_HIGH_422 ||
-        i_profile_idc == PROFILE_H264_HIGH_444 || /* Old one, no longer on spec */
-        i_profile_idc == PROFILE_H264_HIGH_444_PREDICTIVE ||
-        i_profile_idc == PROFILE_H264_CAVLC_INTRA ||
-        i_profile_idc == PROFILE_H264_SVC_BASELINE ||
-        i_profile_idc == PROFILE_H264_SVC_HIGH ||
-        i_profile_idc == PROFILE_H264_MVC_MULTIVIEW_HIGH ||
-        i_profile_idc == PROFILE_H264_MVC_STEREO_HIGH ||
-        i_profile_idc == PROFILE_H264_MVC_MULTIVIEW_DEPTH_HIGH ||
-        i_profile_idc == PROFILE_H264_MVC_ENHANCED_MULTIVIEW_DEPTH_HIGH ||
-        i_profile_idc == PROFILE_H264_MFC_HIGH )
+            i_profile_idc == PROFILE_H264_HIGH_10 ||
+            i_profile_idc == PROFILE_H264_HIGH_422 ||
+            i_profile_idc == PROFILE_H264_HIGH_444 || /* Old one, no longer on spec */
+            i_profile_idc == PROFILE_H264_HIGH_444_PREDICTIVE ||
+            i_profile_idc == PROFILE_H264_CAVLC_INTRA ||
+            i_profile_idc == PROFILE_H264_SVC_BASELINE ||
+            i_profile_idc == PROFILE_H264_SVC_HIGH ||
+            i_profile_idc == PROFILE_H264_MVC_MULTIVIEW_HIGH ||
+            i_profile_idc == PROFILE_H264_MVC_STEREO_HIGH ||
+            i_profile_idc == PROFILE_H264_MVC_MULTIVIEW_DEPTH_HIGH ||
+            i_profile_idc == PROFILE_H264_MVC_ENHANCED_MULTIVIEW_DEPTH_HIGH ||
+            i_profile_idc == PROFILE_H264_MFC_HIGH )
     {
         /* chroma_format_idc */
         p_sps->i_chroma_idc = bs_read_ue( &bs );
@@ -771,7 +772,7 @@ int parse_h264_sps(unsigned char *buf, int len, sps_t *p_sps)
         p_sps->i_num_ref_frames_in_pic_order_cnt_cycle = bs_read_ue( &bs );
         if( p_sps->i_num_ref_frames_in_pic_order_cnt_cycle > 255 )
             return false;
-        for( int i=0; i<p_sps->i_num_ref_frames_in_pic_order_cnt_cycle; i++ )
+        for( int i = 0; i < p_sps->i_num_ref_frames_in_pic_order_cnt_cycle; i++ )
             p_sps->offset_for_ref_frame[i] = bs_read_se( &bs );
     }
     /* i_num_ref_frames */
@@ -809,12 +810,15 @@ int parse_h264_sps(unsigned char *buf, int len, sps_t *p_sps)
         i_tmp = bs_read( &bs, 1 );
         if( i_tmp )
         {
-            static const struct { int w, h; } sar[17] =
+            static const struct
+            {
+                int w, h;
+            } sar[17] =
             {
                 { 0,   0 }, { 1,   1 }, { 12, 11 }, { 10, 11 },
                 { 16, 11 }, { 40, 33 }, { 24, 11 }, { 20, 11 },
                 { 32, 11 }, { 80, 33 }, { 18, 11 }, { 15, 11 },
-                { 64, 33 }, { 160,99 }, {  4,  3 }, {  3,  2 },
+                { 64, 33 }, { 160, 99 }, {  4,  3 }, {  3,  2 },
                 {  2,  1 },
             };
             int i_sar = bs_read( &bs, 8 );
@@ -894,7 +898,7 @@ int parse_h264_sps(unsigned char *buf, int len, sps_t *p_sps)
 
         /* Nal hrd & VC1 hrd parameters */
         p_sps->vui.b_hrd_parameters_present_flag = false;
-        for ( int i=0; i<2; i++ )
+        for ( int i = 0; i < 2; i++ )
         {
             i_tmp = bs_read( &bs, 1 );
             if( i_tmp )
@@ -954,7 +958,7 @@ int parse_h264_pps(unsigned char *buf, int len, pps_t *p_pps)
     int buf_len = len;
     int rbsp_len = len;
     int i = 0;
-    uint8_t* rbsp_buf = (uint8_t*)calloc(1, rbsp_len);
+    uint8_t *rbsp_buf = (uint8_t *)calloc(1, rbsp_len);
     if (NULL == rbsp_buf)
     {
         printf("[%s:%d]calloc fail\n", __FUNCTION__, __LINE__);

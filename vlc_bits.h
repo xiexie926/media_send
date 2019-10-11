@@ -5,7 +5,7 @@
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Gildas Bazin <gbazin at videolan dot org>
- *          Rafaël Carré <funman at videolan dot org>
+ *          Rafa?l Carré <funman at videolan dot org>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -72,7 +72,7 @@ static size_t bs_impl_bytes_forward( bs_t *s, size_t i_count )
 static size_t bs_impl_bytes_remain( const bs_t *s )
 {
     if( s->p )
-        return s->p < s->p_end ? s->p_end - s->p - 1: 0;
+        return s->p < s->p_end ? s->p_end - s->p - 1 : 0;
     else
         return s->p_end - s->p_start;
 }
@@ -99,7 +99,8 @@ static inline void bs_init_custom( bs_t *s, const void *p_data, size_t i_data,
 
 static inline void bs_init( bs_t *s, const void *p_data, size_t i_data )
 {
-    bs_byte_callbacks_t cb = {
+    bs_byte_callbacks_t cb =
+    {
         bs_impl_bytes_forward,
         bs_impl_bytes_pos,
         bs_impl_bytes_remain,
@@ -117,10 +118,10 @@ static inline int bs_refill( bs_t *s )
 {
     if( s->i_left == 0 )
     {
-       if( s->cb.pf_byte_forward( s, 1 ) != 1 )
-           return -1;
+        if( s->cb.pf_byte_forward( s, 1 ) != 1 )
+            return -1;
 
-       if( s->p < s->p_end )
+        if( s->p < s->p_end )
             s->i_left = 8;
     }
     return s->i_left > 0 ? 0 : 1;
@@ -164,8 +165,9 @@ static inline void bs_skip( bs_t *s, size_t i_count )
 
 static inline uint32_t bs_read( bs_t *s, uint8_t i_count )
 {
-     static const uint32_t i_mask[33] =
-     {  0x00,
+    static const uint32_t i_mask[33] =
+    {
+        0x00,
         0x01,      0x03,      0x07,      0x0f,
         0x1f,      0x3f,      0x7f,      0xff,
         0x1ff,     0x3ff,     0x7ff,     0xfff,
@@ -173,7 +175,8 @@ static inline uint32_t bs_read( bs_t *s, uint8_t i_count )
         0x1ffff,   0x3ffff,   0x7ffff,   0xfffff,
         0x1fffff,  0x3fffff,  0x7fffff,  0xffffff,
         0x1ffffff, 0x3ffffff, 0x7ffffff, 0xfffffff,
-        0x1fffffff,0x3fffffff,0x7fffffff,0xffffffff};
+        0x1fffffff, 0x3fffffff, 0x7fffffff, 0xffffffff
+    };
     uint8_t  i_shr, i_drop = 0;
     uint32_t i_result = 0;
 
@@ -200,12 +203,12 @@ static inline uint32_t bs_read( bs_t *s, uint8_t i_count )
         {
             i_shr = i_count - s->i_left;
             /* less in the buffer than requested */
-           if( i_shr >= 32 )
-               i_result = 0;
-           else
-               i_result |= (*s->p&i_mask[s->i_left]) << i_shr;
-           i_count  -= s->i_left;
-           s->i_left = 0;
+            if( i_shr >= 32 )
+                i_result = 0;
+            else
+                i_result |= (*s->p & i_mask[s->i_left]) << i_shr;
+            i_count  -= s->i_left;
+            s->i_left = 0;
         }
     }
 
@@ -220,7 +223,7 @@ static inline uint32_t bs_read1( bs_t *s )
     if( bs_refill( s ) )
         return 0;
     s->i_left--;
-    return ( *s->p >> s->i_left )&0x01;
+    return ( *s->p >> s->i_left ) & 0x01;
 }
 
 static inline void bs_write( bs_t *s, uint8_t i_count, uint32_t i_bits )
@@ -235,7 +238,7 @@ static inline void bs_write( bs_t *s, uint8_t i_count, uint32_t i_bits )
 
         i_count--;
 
-        if( ( i_bits >> i_count )&0x01 )
+        if( ( i_bits >> i_count ) & 0x01 )
         {
             *s->p |= 1 << ( s->i_left - 1 );
         }
@@ -268,7 +271,7 @@ static inline void bs_write_align( bs_t *s, uint8_t v )
 #define bs_align_1( s ) bs_write_align( s, 1 )
 
 /* Read unsigned Exp-Golomb code */
-static inline uint_fast32_t bs_read_ue( bs_t * bs )
+static inline uint_fast32_t bs_read_ue( bs_t *bs )
 {
     unsigned i = 0;
 
@@ -284,7 +287,7 @@ static inline int_fast32_t bs_read_se( bs_t *s )
     uint_fast32_t val = bs_read_ue( s );
 
     return (val & 0x01) ? (int_fast32_t)((val + 1) / 2)
-                        : -(int_fast32_t)(val / 2);
+           : -(int_fast32_t)(val / 2);
 }
 
 #undef bs_forward
