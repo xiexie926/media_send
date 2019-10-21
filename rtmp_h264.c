@@ -2,25 +2,35 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "rtmp_h264.h"
 #include "librtmp/rtmp.h"
 #include "librtmp/rtmp_sys.h"
 #include "librtmp/amf.h"
 #include "librtmp/log.h"
+#include "media_send.h"
+#include "rtmp_h264.h"
+
+typedef struct _RTMPMetadata
+{
+    // video, must be h264 type
+    unsigned int    nSpsLen;
+    unsigned char   *Sps;
+    unsigned int    nPpsLen;
+    unsigned char   *Pps;
+} RTMPMetadata, *LPRTMPMetadata;
 
 //定义包头长度，RTMP_MAX_HEADER_SIZE=18
 #define RTMP_HEAD_SIZE   (sizeof(RTMPPacket)+RTMP_MAX_HEADER_SIZE)
 static RTMP *m_pRtmp = NULL;
 RTMPMetadata metaData = {0};
 
-void rtmp264_init()
+void rtmp264_init(void)
 {
     RTMP_LogSetLevel(RTMP_LOGALL);//test
     m_pRtmp = RTMP_Alloc();
     RTMP_Init(m_pRtmp);
 }
 
-void rtmp264_unit()
+void rtmp264_unit(void)
 {
     if(m_pRtmp)
     {
@@ -253,3 +263,152 @@ int rtmp264_send_frame(unsigned char *data, unsigned int size, int bIsKeyFrame, 
 
     return bRet;
 }
+
+int test_rtmp(void)
+{
+    rtmp264_init();
+    //初始化并连接到服务器
+    rtmp264_connect("rtmp://192.168.126.199:1935/live/stream");
+
+    //打开H264视频文件
+    FILE *file = fopen(H264_FILE, "r");
+    if(NULL == file)
+    {
+        printf("open file failed..\n");
+        return -1;
+    }
+    struct stat statbuf;
+    int    start_send = 0;
+    //获取文件长度
+    stat(H264_FILE, &statbuf);
+    int file_size_cur = 0;
+    int file_size = statbuf.st_size;
+    unsigned int file_index = 0;
+    packet_info pPacker = {0};
+    frame_info frame = {0};
+    pPacker.s64CurPts = 10000;
+
+    unsigned char *buf = (unsigned char *)calloc(1, MAX_FILE_LEN);
+    if(buf == NULL)
+    {
+        return -1;
+    }
+    int first_idr = 1;
+    unsigned char *send_buf = (unsigned char *)calloc(1, MAX_FILE_LEN);
+    int send_len = 0;
+    int frameRate = 25;
+    while(1)
+    {
+        fseek(file, file_index, 0);
+        memset(buf, 0, MAX_FILE_LEN);
+        int read_len = fread(buf, 1, MAX_FILE_LEN, file);
+        if(read_len <= 0)
+        {
+            file_size_cur = 0;
+            break;
+        }
+        //printf("1#file_index:%d read_len:%d file_size_cur:%d\n", file_index, read_len, file_size_cur);
+        if (file_size_cur + read_len >= file_size)
+        {
+            printf("file end...\n");
+            file_index = 0;
+            file_size_cur = 0;
+            fseek(file, file_index, 0);
+            continue;
+        }
+        memset(&frame, 0, sizeof(frame));
+        if(0 == get_h264_frame(buf, &frame))
+        {
+            file_size_cur += frame.len;
+            file_index += frame.len;
+            switch (frame.type)
+            {
+            case NAL_TYPE_SPS:
+            {
+                printf("NAL_TYPE_SPS\n");
+                sps_t sps = {0};
+                //offset 00 00 00 01 27 ...[data]
+                int offset = frame.start_code_len + 1;
+                parse_h264_sps(buf + offset, frame.len - offset, &sps);
+                //printf("b_fixed_frame_rate:%d\n", sps.vui.b_fixed_frame_rate);
+                //printf("i_time_scale:%d\n", sps.vui.i_time_scale);
+                //printf("i_num_units_in_tick:%d\n", sps.vui.i_num_units_in_tick);
+                if (sps.vui.b_fixed_frame_rate)
+                {
+                    frameRate = sps.vui.i_time_scale / (2 * sps.vui.i_num_units_in_tick);
+                }
+                else
+                {
+                    frameRate = sps.vui.i_time_scale / sps.vui.i_num_units_in_tick;
+                }
+                printf("frameRate:%d width*height:%d*%d\n", frameRate, (sps.pic_width_in_mbs_minus1 + 1) * 16,
+                       (sps.pic_height_in_map_units_minus1 + 1) * 16);
+                memcpy(send_buf, buf + frame.start_code_len, frame.len - frame.start_code_len);
+                send_len += frame.len - frame.start_code_len;
+                rtmp264_save_sps(send_buf, send_len);
+                memset(send_buf, 0, send_len);
+                send_len = 0;
+                break;
+            }
+            case NAL_TYPE_PPS:
+            {
+                printf("NAL_TYPE_PPS\n");
+                memcpy(send_buf, buf + frame.start_code_len, frame.len - frame.start_code_len);
+                send_len += frame.len - frame.start_code_len;
+                rtmp264_save_pps(send_buf, send_len);
+                memset(send_buf, 0, send_len);
+                send_len = 0;
+                break;
+            }
+            case NAL_TYPE_DELIMITER:
+            {
+                //printf("NAL_TYPE_PPS\n");
+                //memcpy(send_buf + send_len, buf, frame.len);
+                //send_len += frame.len;
+                break;
+            }
+            case NAL_TYPE_IDR:
+            {
+                printf("NAL_TYPE_IDR\n");
+                //rtmp单位为ms 25fps增量36ms 30fps增量33ms
+                pPacker.s64CurPts += 1000 / frameRate;
+                pPacker.IFrame = 1;
+                send_len = frame.len - frame.start_code_len;
+                memcpy(send_buf, buf + frame.start_code_len, send_len);
+                //pack_h264_stream(send_buf, send_len, &pPacker, &head);
+                rtmp264_send_frame(send_buf, send_len, pPacker.IFrame, (unsigned int)pPacker.s64CurPts);
+                memset(send_buf, 0, send_len);
+                send_len = 0;
+                usleep(1000 * 1000 / frameRate - 5 * 1000);
+                break;
+            }
+            case NAL_TYPE_NOTIDR:
+            {
+                //printf("NAL_TYPE_NOTIDR\n");
+                pPacker.IFrame = 0;
+                //rtmp单位为ms 25fps增量36ms 30fps增量33ms
+                pPacker.s64CurPts += 1000 / frameRate;
+                send_len += frame.len - frame.start_code_len;
+                memcpy(send_buf, buf + frame.start_code_len, send_len);
+                //pack_h264_stream(send_buf, send_len, &pPacker, &head);
+                rtmp264_send_frame(send_buf, send_len, pPacker.IFrame, (unsigned int)pPacker.s64CurPts);
+                memset(send_buf, 0, send_len);
+                send_len = 0;
+                usleep(1000 * 1000 / frameRate - 5 * 1000);
+                break;
+            }
+            }
+
+        }
+        else
+        {
+            usleep(1000 * 1000);
+        }
+    }
+    free(buf);
+    fclose(file);
+    rtmp264_unit();
+
+    return 0;
+}
+

@@ -284,3 +284,6 @@ int get_h264_frame(unsigned char *buf, frame_info *pframe);
 int parse_h264_sps(unsigned char *buf, int len, sps_t *p_sps);
 int parse_h264_pps(unsigned char *buf, int len, pps_t *p_pps);
 
+int test_rtp_ps_stream(void);
+int test_rtp_h264_stream(void);
+
